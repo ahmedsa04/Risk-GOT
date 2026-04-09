@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { GameState, GameAction } from '../reducer';
 import { HOUSES } from '../data/houses';
 import { ALL_REGIONS } from '../data/territories';
@@ -9,6 +9,75 @@ import { Plus, Minus, Swords, ArrowRightLeft, CreditCard, Check, X } from 'lucid
 interface ActionPanelProps {
   state: GameState;
   dispatch: React.Dispatch<GameAction>;
+}
+
+function DeployControl({ territoryName, territoryId, max, dispatch }: {
+  territoryName: string;
+  territoryId: string;
+  max: number;
+  dispatch: React.Dispatch<GameAction>;
+}) {
+  const [amount, setAmount] = useState(1);
+  const clamped = Math.max(1, Math.min(amount, max));
+
+  return (
+    <div className="bg-[#1a1510] rounded-lg border border-[#4a3828] p-3">
+      <div className="text-xs text-gray-400 mb-2">Deploy to: <span className="text-white font-bold">{territoryName}</span></div>
+      <div className="flex items-center gap-2 mb-2">
+        <button
+          onClick={() => setAmount(a => Math.max(1, a - 1))}
+          disabled={clamped <= 1}
+          className="w-8 h-8 rounded bg-[#2a2018] border border-[#4a3828] text-white text-sm font-bold hover:bg-[#3a3028] disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
+        >
+          <Minus className="w-3.5 h-3.5" />
+        </button>
+        <input
+          type="number"
+          min={1}
+          max={max}
+          value={clamped}
+          onChange={(e) => {
+            const v = parseInt(e.target.value, 10);
+            setAmount(isNaN(v) ? 1 : Math.max(1, Math.min(v, max)));
+          }}
+          className="flex-1 bg-[#0a0805] border border-[#4a3828] rounded text-center text-white text-sm font-bold py-1.5 focus:outline-none focus:border-[#DAA520] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
+        <button
+          onClick={() => setAmount(a => Math.min(max, a + 1))}
+          disabled={clamped >= max}
+          className="w-8 h-8 rounded bg-[#2a2018] border border-[#4a3828] text-white text-sm font-bold hover:bg-[#3a3028] disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
+        >
+          <Plus className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      {max > 1 && (
+        <input
+          type="range"
+          min={1}
+          max={max}
+          value={clamped}
+          onChange={(e) => setAmount(parseInt(e.target.value, 10))}
+          className="w-full h-1.5 mb-2 rounded-lg appearance-none cursor-pointer accent-[#DAA520] bg-[#2a2018]"
+        />
+      )}
+      <div className="flex gap-2">
+        <button
+          onClick={() => { dispatch({ type: 'DEPLOY_ARMY', territoryId, count: clamped }); setAmount(1); }}
+          className="flex-1 py-2 bg-[#2E7D32] text-white rounded border border-green-700 hover:bg-green-700 text-xs font-bold"
+        >
+          Deploy {clamped}
+        </button>
+        {max > 1 && (
+          <button
+            onClick={() => { dispatch({ type: 'DEPLOY_ARMY', territoryId, count: max }); setAmount(1); }}
+            className="py-2 px-3 bg-[#2E7D32] text-white rounded border border-green-700 hover:bg-green-700 text-xs font-bold"
+          >
+            All ({max})
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function ActionPanel({ state, dispatch }: ActionPanelProps) {
@@ -56,29 +125,12 @@ export default function ActionPanel({ state, dispatch }: ActionPanelProps) {
 
           {/* Selected territory deployment */}
           {selectedTerritory && selectedTerritory.owner === currentPlayer.id && state.reinforcementsRemaining > 0 && (
-            <div className="bg-[#1a1510] rounded-lg border border-[#4a3828] p-3">
-              <div className="text-xs text-gray-400 mb-2">Deploy to: <span className="text-white font-bold">{selectedTerritory.name}</span></div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => dispatch({ type: 'DEPLOY_ARMY', territoryId: state.selectedTerritory!, count: 1 })}
-                  className="flex-1 py-2 bg-[#2E7D32] text-white rounded border border-green-700 hover:bg-green-700 text-xs font-bold"
-                >
-                  +1
-                </button>
-                <button
-                  onClick={() => dispatch({ type: 'DEPLOY_ARMY', territoryId: state.selectedTerritory!, count: 3 })}
-                  className="flex-1 py-2 bg-[#2E7D32] text-white rounded border border-green-700 hover:bg-green-700 text-xs font-bold"
-                >
-                  +3
-                </button>
-                <button
-                  onClick={() => dispatch({ type: 'DEPLOY_ARMY', territoryId: state.selectedTerritory!, count: state.reinforcementsRemaining })}
-                  className="flex-1 py-2 bg-[#2E7D32] text-white rounded border border-green-700 hover:bg-green-700 text-xs font-bold"
-                >
-                  All
-                </button>
-              </div>
-            </div>
+            <DeployControl
+              territoryName={selectedTerritory.name}
+              territoryId={state.selectedTerritory!}
+              max={state.reinforcementsRemaining}
+              dispatch={dispatch}
+            />
           )}
 
           {/* Card trade */}
